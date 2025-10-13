@@ -7,7 +7,7 @@ const Manager = () => {
         
     </div></div>
     
-    <div className=' mx-auto bg-slate-50 mycontainer'>
+    <div className='  bg-slate-50 mycontainer'>
         <h1>PassOp</h1>
         <p>Your own Password Manager</p>
 
