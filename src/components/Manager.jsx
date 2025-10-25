@@ -1,13 +1,13 @@
 import React, { use } from "react";
-import { useRef, useState, useEffect } from "react"; 
-
-
+import { useRef, useState, useEffect } from "react";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const Manager = () => {
   const ref = useRef();
-  const [form, setForm] = useState({site:"" , username:"" , password:""});
-  const[passwordArray, setPasswordArray] = useState([]);
-
+  const passwordRef = useRef();
+  const [form, setForm] = useState({ site: "", username: "", password: "" });
+  const [passwordArray, setPasswordArray] = useState([]);
 
   useEffect(() => {
     let passwords = localStorage.getItem("passwords");
@@ -15,31 +15,59 @@ const Manager = () => {
       setPasswordArray(JSON.parse(passwords));
     }
   }, []);
-  
+
+  const copyText = (text) => {
+    toast("Copied to clipboard!", {
+      position: "top-right",
+      autoClose: 5000,
+      hideProgressBar: false,
+      closeOnClick: false,
+      pauseOnHover: true,
+      draggable: true,
+      progress: undefined,
+      theme: "light",
+    });
+    navigator.clipboard.writeText(text);
+  };
 
   const showPassword = () => {
-    alert("Show Password");
-    if(ref.current.src.includes("icons/eyecross.png")){
-      ref.current.src="icons/eye.png"
+    passwordRef.current.type = "text";
+    console.log(ref.current.src);
+    if (ref.current.src.includes("icons/eyecross.png")) {
+      ref.current.src = "icons/eye.png";
+      passwordRef.current.type = "password";
+    } else {
+      ref.current.src = "icons/eyecross.png";
+      passwordRef.current.type = "text";
     }
-    else{
-      ref.current.src="icons/eyecross.png"
-    }
-  }
+  };
 
   const savePassword = () => {
-   setPasswordArray([...passwordArray, form]);
-   localStorage.setItem("password", JSON.stringify([...passwordArray, form]));
-   console.log([...passwordArray, form]);
-
-  } 
+    setPasswordArray([...passwordArray, form]);
+    localStorage.setItem("passwords", JSON.stringify([...passwordArray, form]));
+    console.log([...passwordArray, form]);
+  };
 
   const handleChage = (e) => {
-    setForm({...form , [e.target.name]:e.target.value})
-  }
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
 
   return (
     <>
+      <ToastContainer
+        position="top-right"
+        autoClose={5000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick={false}
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+        transition="Bounce"
+      />
+
       <div className="absolute inset-0 -z-10 h-full w-full bg-green-50 bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:14px_24px]">
         <div className="absolute left-0 right-0 top-0 -z-10 m-auto h-[310px] w-[310px] rounded-full bg-green-400 opacity-20 blur-[100px]"></div>
       </div>
@@ -76,11 +104,12 @@ const Manager = () => {
             />
             <div className="relative">
               <input
+                ref={passwordRef}
                 value={form.password}
                 onChange={handleChage}
                 placeholder="Enter Password"
                 className="rounded-full border border-green-500 w-full p-4 py-1 bg-white text-black"
-                type="text"
+                type="password"
                 name="password"
                 id=""
               />
@@ -89,7 +118,13 @@ const Manager = () => {
                 className="absolute right-[3px] top-[4px] cursor-pointer"
                 onClick={showPassword}
               >
-                <img ref={ref}className="p-1"width={26}src="icons/eye.png"alt="eye"/>
+                <img
+                  ref={ref}
+                  className="p-1"
+                  width={26}
+                  src="icons/eye.png"
+                  alt="eye"
+                />
               </span>
             </div>
           </div>
@@ -102,7 +137,7 @@ const Manager = () => {
               src="https://cdn.lordicon.com/efxgwrkc.json"
               trigger="hover"
             ></lord-icon>
-            Add Password
+            Save
           </button>
         </div>
         <div className="passwords">
@@ -115,23 +150,99 @@ const Manager = () => {
                   <th className="py-2">Site</th>
                   <th className="py-2">Username</th>
                   <th className="py-2">Password</th>
+                  <th className="py-2">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-green-100">
-                {passwordArray.map((item,index) => {
-                  return <tr key={index}>
-
-                  
-                    <td className="p-2 border border-white text-center w-32">
-                      <a href={item.site} target="_blank">{item.site}</a>
-                    </td>
-                    <td className="p-2 border border-white text-center w-32">
-                      {item.username}
-                    </td>
-                    <td className="p-2 border border-white text-center w-32">
-                      {item.password}
-                    </td>
-                  </tr>;
+                {passwordArray.map((item, index) => {
+                  return (
+                    <tr key={index}>
+                      <td className="p-2 border border-white text-center">
+                        <div className=" flex items-center justify-center">
+                          <a href={item.site} target="_blank">
+                            {item.site}
+                          </a>
+                          <div
+                            className="lordiconcopy size-7 cursor-pointer"
+                            onClick={() => {
+                              copyText(item.site);
+                            }}
+                          >
+                            <lord-icon
+                              style={{
+                                width: "25px",
+                                height: "25px",
+                                paddingTop: "3px",
+                                paddingLeft: "3px",
+                              }}
+                              src="https://cdn.lordicon.com/iykgtsbt.json"
+                              trigger="hover"
+                            ></lord-icon>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-2 border border-white text-center ">
+                        <div className=" flex items-center justify-center">
+                          <span>{item.username}</span>
+                          <div
+                            className=" lordiconcopy size-7 cursor-pointer"
+                            onClick={() => {
+                              copyText(item.username);
+                            }}
+                          >
+                            <lord-icon
+                              style={{
+                                width: "25px",
+                                height: "25px",
+                                paddingTop: "3px",
+                                paddingLeft: "3px",
+                              }}
+                              src="https://cdn.lordicon.com/iykgtsbt.json"
+                              trigger="hover"
+                            ></lord-icon>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-2 border border-white text-center">
+                        <div className=" flex items-center justify-center">
+                          <span>{item.password}</span>
+                          <div
+                            className=" lordiconcopy size-7 cursor-pointer"
+                            onClick={() => {
+                              copyText(item.password);
+                            }}
+                          >
+                            <lord-icon
+                              style={{
+                                width: "25px",
+                                height: "25px",
+                                paddingTop: "3px",
+                                paddingLeft: "3px",
+                              }}
+                              src="https://cdn.lordicon.com/iykgtsbt.json"
+                              trigger="hover"
+                            ></lord-icon>
+                          </div>
+                        </div>
+                      </td>
+                      <td className=" justify-center p-2 border border-white text-center">
+                        <span className="cursor-pointer mx-1">
+                          <lord-icon
+                            src="https://cdn.lordicon.com/gwlusjdu.json"
+                            trigger="hover"
+                            style={{ width: "25px", height: "25px" }}
+                          ></lord-icon>
+                        </span>
+                        <span className="cursor-pointer mx-1">
+                          <lord-icon
+                            src="https://cdn.lordicon.com/skkahier.json"
+                            trigger="hover"
+                            style={{ width: "25px", height: "25px" }}
+                          ></lord-icon>
+                        </span>
+                      </td>
+                    </tr>
+                  );
                 })}
               </tbody>
             </table>
