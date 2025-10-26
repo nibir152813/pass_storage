@@ -1,10 +1,12 @@
 @import "tailwindcss";
 
+
 @layer components {
   .mycontainer {
-    @apply container px-40 py-16 mx-auto;
+    @apply container mx-auto px-4 py-8 sm:px-6 md:px-12 lg:px-20 xl:px-40;
   }
 }
+
 
 
 /* password oikhane default icon hide korar jonno */
