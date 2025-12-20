@@ -3,6 +3,10 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { v4 as uuidv4 } from "uuid";
 
+const maskPassword = (password) => {
+  return "•".repeat(password.length);
+};
+
 const Manager = () => {
   const ref = useRef();
   const passwordRef = useRef();
@@ -205,14 +209,15 @@ const Manager = () => {
                   return (
                     <tr key={index}>
                       <td className="p-2 border border-white text-center">
-                        <div className=" flex items-center justify-center">
+                        <div className="flex items-center justify-center">
                           <a href={item.site} target="_blank">
                             {item.site}
                           </a>
+
                           <div
                             className="lordiconcopy size-7 cursor-pointer"
                             onClick={() => {
-                              copyText(item.site);
+                              copyText(item.password);
                             }}
                           >
                             <lord-icon
@@ -228,6 +233,7 @@ const Manager = () => {
                           </div>
                         </div>
                       </td>
+
                       <td className="p-2 border border-white text-center ">
                         <div className=" flex items-center justify-center">
                           <span>{item.username}</span>
@@ -252,7 +258,7 @@ const Manager = () => {
                       </td>
                       <td className="p-2 border border-white text-center">
                         <div className=" flex items-center justify-center">
-                          <span>{item.password}</span>
+                          <span>{maskPassword(item.password)}</span>
                           <div
                             className=" lordiconcopy size-7 cursor-pointer"
                             onClick={() => {

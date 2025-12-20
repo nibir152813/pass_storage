@@ -3,26 +3,31 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 const Login = ({ onLogin }) => {
-  const [form, setForm] = useState({ email: "", password: "" });
+  const [form, setForm] = useState({
+    email: "",
+    password: "",
+  });
+
+  
+  const USER_EMAIL = "nibir@gmail.com";
+  const USER_PASSWORD = "123456";
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
   const handleLogin = () => {
-    if (form.email.length < 3 || form.password.length < 3) {
-      toast.error("Invalid email or password!");
+    if (!form.email || !form.password) {
+      toast.error("Email and password required!");
       return;
     }
 
-    // Simple demo login (no backend yet)
-    const savedUser = JSON.parse(localStorage.getItem("user"));
+    const emailMatch =
+      form.email.trim().toLowerCase() === USER_EMAIL.toLowerCase();
 
-    if (
-      savedUser &&
-      savedUser.email === form.email &&
-      savedUser.password === form.password
-    ) {
+    const passwordMatch = form.password.trim() === USER_PASSWORD;
+
+    if (emailMatch && passwordMatch) {
       toast.success("Login successful!");
       onLogin(true);
     } else {
@@ -45,18 +50,18 @@ const Login = ({ onLogin }) => {
         </h2>
 
         <input
-          onChange={handleChange}
           name="email"
           type="email"
           placeholder="Enter your Email"
+          onChange={handleChange}
           className="w-full p-3 mb-4 border border-green-500 rounded-full"
         />
 
         <input
-          onChange={handleChange}
           name="password"
           type="password"
           placeholder="Enter Password"
+          onChange={handleChange}
           className="w-full p-3 mb-6 border border-green-500 rounded-full"
         />
 
@@ -66,13 +71,6 @@ const Login = ({ onLogin }) => {
         >
           Login
         </button>
-
-        <p className="mt-4 text-center text-sm">
-          Don't have an account?{" "}
-          <a href="#" className="text-green-600 font-semibold">
-            Register
-          </a>
-        </p>
       </div>
     </div>
   );
