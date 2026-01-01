@@ -162,6 +162,8 @@ const Manager = () => {
                 type="password"
                 name="password"
                 id="password"
+              
+                
               />
 
               <span
