@@ -1,4 +1,6 @@
 // User model for MongoDB
+const { ObjectId } = require("mongodb");
+
 class User {
   constructor(db) {
     this.collection = db.collection("users");
@@ -19,7 +21,7 @@ class User {
   }
 
   async findById(userId) {
-    return await this.collection.findOne({ _id: userId });
+    return await this.collection.findOne({ _id: new ObjectId(userId) });
   }
 }
 

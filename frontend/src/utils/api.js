@@ -77,6 +77,14 @@ export const authAPI = {
     const data = await apiRequest("/auth/verify");
     return data;
   },
+
+  verifyPassword: async (password) => {
+    const data = await apiRequest("/auth/verify-password", {
+      method: "POST",
+      body: JSON.stringify({ password }),
+    });
+    return data;
+  },
 };
 
 // Password API

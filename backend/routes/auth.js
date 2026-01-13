@@ -92,4 +92,34 @@ router.get("/verify", require("../middleware/auth").authenticateToken, (req, res
   res.json({ user: req.user });
 });
 
+// Verify password (for viewing saved passwords)
+router.post("/verify-password", require("../middleware/auth").authenticateToken, async (req, res) => {
+  try {
+    const { password } = req.body;
+    const userId = req.user.userId;
+
+    if (!password) {
+      return res.status(400).json({ error: "Password is required" });
+    }
+
+    const userModel = new User(req.db);
+    const user = await userModel.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const isValidPassword = await bcrypt.compare(password, user.password);
+
+    if (!isValidPassword) {
+      return res.status(401).json({ error: "Incorrect password" });
+    }
+
+    res.json({ message: "Password verified successfully", verified: true });
+  } catch (error) {
+    console.error("Verify password error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 module.exports = router;

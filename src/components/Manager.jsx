@@ -1,8 +1,8 @@
 import { useRef, useState, useEffect } from "react";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { v4 as uuidv4 } from "uuid";
 import { Eye, EyeOff, Copy, Save, Edit2, Trash2, X } from "lucide-react";
-import { passwordAPI, getUser, authAPI } from "../utils/api";
 
 const maskPassword = (password) => {
   return "•".repeat(password.length);
@@ -18,27 +18,15 @@ const Manager = () => {
   const [currentPasswordData, setCurrentPasswordData] = useState(null);
   const [isVerified, setIsVerified] = useState(false);
   const [showFormPassword, setShowFormPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [editingId, setEditingId] = useState(null);
 
-  const user = getUser();
+  const MASTER_PASSWORD = "123456";
 
-  // Fetch passwords from backend on component mount
   useEffect(() => {
-    fetchPasswords();
-  }, []);
-
-  const fetchPasswords = async () => {
-    try {
-      setLoading(true);
-      const response = await passwordAPI.getAll();
-      setPasswordArray(response.passwords || []);
-    } catch (error) {
-      toast.error(error.message || "Failed to fetch passwords");
-    } finally {
-      setLoading(false);
+    let passwords = localStorage.getItem("passwords");
+    if (passwords) {
+      setPasswordArray(JSON.parse(passwords));
     }
-  };
+  }, []);
 
   const copyText = (text) => {
     toast("Copied to clipboard!", {
@@ -65,18 +53,8 @@ const Manager = () => {
     setDialogPassword("");
   };
 
-  const handleDialogSubmit = async () => {
-    if (!dialogPassword) {
-      toast.error("Please enter your login password!", {
-        position: "top-right",
-        autoClose: 3000,
-        theme: "dark",
-      });
-      return;
-    }
-
-    try {
-      await authAPI.verifyPassword(dialogPassword);
+  const handleDialogSubmit = () => {
+    if (dialogPassword === MASTER_PASSWORD) {
       toast.success("Password verified!", {
         position: "top-right",
         autoClose: 2000,
@@ -84,13 +62,12 @@ const Manager = () => {
       });
       setIsVerified(true);
       setDialogPassword("");
-    } catch (error) {
-      toast.error(error.message || "Incorrect password!", {
+    } else {
+      toast.error("Incorrect master password!", {
         position: "top-right",
         autoClose: 3000,
         theme: "dark",
       });
-      setDialogPassword("");
     }
   };
 
@@ -101,84 +78,82 @@ const Manager = () => {
     setIsVerified(false);
   };
 
-  const savePassword = async () => {
-    if (!form.site || !form.username || !form.password) {
-      toast.error("All fields are required!");
+  const savePassword = () => {
+    // Check if maximum password limit reached
+    if (passwordArray.length >= MAX_PASSWORDS) {
+      toast.error(
+        `Maximum limit reached! You can only save ${MAX_PASSWORDS} passwords.`,
+        {
+          position: "top-right",
+          autoClose: 5000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
+          theme: "dark",
+        }
+      );
       return;
     }
 
-    if (form.site.length <= 3 || form.username.length <= 3 || form.password.length <= 3) {
-      toast.error("All fields must be more than 3 characters!");
-      return;
-    }
-
-    try {
-      setLoading(true);
-
-      if (editingId) {
-        // Update existing password
-        await passwordAPI.update(editingId, form.site, form.username, form.password);
-        toast.success("Password updated successfully!", {
-          position: "top-right",
-          autoClose: 5000,
-          theme: "dark",
-        });
-        setEditingId(null);
-      } else {
-        // Create new password
-        await passwordAPI.create(form.site, form.username, form.password);
-        toast.success("Password saved successfully!", {
-          position: "top-right",
-          autoClose: 5000,
-          theme: "dark",
-        });
-      }
-
+    if (
+      form.site.length > 3 &&
+      form.username.length > 3 &&
+      form.password.length > 3
+    ) {
+      setPasswordArray([...passwordArray, { ...form, id: uuidv4() }]);
+      localStorage.setItem(
+        "passwords",
+        JSON.stringify([...passwordArray, { ...form, id: uuidv4() }])
+      );
+      console.log([...passwordArray, form]);
       setForm({ site: "", username: "", password: "" });
-      await fetchPasswords();
-    } catch (error) {
-      toast.error(error.message || "Failed to save password!");
-    } finally {
-      setLoading(false);
+
+      toast("Password saved Successfully!", {
+        position: "top-right",
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+        theme: "dark",
+      });
+    } else {
+      toast("Error: Password not saved!");
     }
   };
 
-  const deletePassword = async (id) => {
-    if (!confirm("Are you sure you want to delete this password?")) {
-      return;
-    }
-
-    try {
-      setLoading(true);
-      await passwordAPI.delete(id);
-      toast.success("Password deleted successfully!", {
+  const deletePassword = (id) => {
+    console.log("Deleting password with id ", id);
+    let c = confirm("Are you sure you want to delete this password?");
+    if (c) {
+      setPasswordArray(passwordArray.filter((item) => item.id !== id));
+      localStorage.setItem(
+        "passwords",
+        JSON.stringify(passwordArray.filter((item) => item.id !== id))
+      );
+      toast("Password Deleted!", {
         position: "top-right",
         autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
         theme: "dark",
       });
-      await fetchPasswords();
-    } catch (error) {
-      toast.error(error.message || "Failed to delete password!");
-    } finally {
-      setLoading(false);
     }
   };
 
   const editPassword = (id) => {
-    const passwordToEdit = passwordArray.find((item) => item.id === id);
-    if (passwordToEdit) {
-      setForm({
-        site: passwordToEdit.site,
-        username: passwordToEdit.username,
-        password: passwordToEdit.password,
-      });
-      setEditingId(id);
-      // Scroll to form
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
+    console.log("Editing password with id ", id);
+    setForm(passwordArray.filter((i) => i.id === id)[0]);
+    setPasswordArray(passwordArray.filter((item) => item.id !== id));
   };
 
-  const handleChange = (e) => {
+  const handleChage = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
@@ -200,7 +175,7 @@ const Manager = () => {
           <div className="bg-white rounded-2xl shadow-2xl p-8 w-[90%] max-w-md transform transition-all animate-fadeIn">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold text-gray-800">
-                {isVerified ? "Password Details" : "Enter Login Password"}
+                {isVerified ? "Password Details" : "Verify Master Password"}
               </h2>
               <button
                 onClick={handleDialogClose}
@@ -213,7 +188,7 @@ const Manager = () => {
             {!isVerified ? (
               <>
                 <p className="text-gray-600 mb-6">
-                  Enter your login password to view this saved password.
+                  Enter your master password to view this saved password.
                 </p>
 
                 <input
@@ -221,7 +196,7 @@ const Manager = () => {
                   value={dialogPassword}
                   onChange={(e) => setDialogPassword(e.target.value)}
                   onKeyPress={(e) => e.key === "Enter" && handleDialogSubmit()}
-                  placeholder="Enter your login password"
+                  placeholder="Enter master password"
                   className="w-full p-4 border-2 border-green-500 rounded-full mb-6 focus:outline-none focus:border-green-600 transition-colors"
                   autoFocus
                 />
@@ -253,7 +228,6 @@ const Manager = () => {
                       <a
                         href={currentPasswordData?.site}
                         target="_blank"
-                        rel="noopener noreferrer"
                         className="text-blue-600 hover:underline break-all flex-1"
                       >
                         {currentPasswordData?.site}
@@ -332,42 +306,38 @@ const Manager = () => {
         <div className="flex flex-col p-4 text-black gap-8 items-center">
           <input
             value={form.site}
-            onChange={handleChange}
+            onChange={handleChage}
             placeholder="Enter Website URL"
-            className="rounded-full border border-green-500 w-full p-4 py-1 bg-white text-black focus:outline-none focus:ring-2 focus:ring-green-500"
+            className="rounded-full border border-green-500 w-full p-4 py-1 bg-white text-black"
             type="text"
             name="site"
             id="site"
-            disabled={loading}
           />
           <div className="flex flex-col md:flex-row w-full justify-between gap-8">
             <input
               value={form.username}
-              onChange={handleChange}
+              onChange={handleChage}
               placeholder="Enter Username"
-              className="rounded-full border border-green-500 w-full p-4 py-1 bg-white text-black focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="rounded-full border border-green-500 w-full p-4 py-1 bg-white text-black"
               type="text"
               name="username"
               id="username"
-              disabled={loading}
             />
-            <div className="relative w-full">
+            <div className="relative">
               <input
                 ref={passwordRef}
                 value={form.password}
-                onChange={handleChange}
+                onChange={handleChage}
                 placeholder="Enter Password"
-                className="rounded-full border border-green-500 w-full p-4 py-1 bg-white text-black pr-10 focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="rounded-full border border-green-500 w-full p-4 py-1 bg-white text-black pr-10"
                 type={showFormPassword ? "text" : "password"}
                 name="password"
                 id="password"
-                disabled={loading}
               />
 
               <button
                 onClick={toggleFormPassword}
                 className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer text-gray-600 hover:text-gray-800 transition-colors"
-                type="button"
               >
                 {showFormPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>
@@ -376,24 +346,11 @@ const Manager = () => {
 
           <button
             onClick={savePassword}
-            disabled={loading}
-            className="flex justify-center items-center gap-2 bg-green-400 hover:bg-green-300 disabled:bg-green-200 disabled:cursor-not-allowed rounded-full px-8 py-2 w-fit border border-green-900 transition-colors"
+            className="flex justify-center items-center gap-2 bg-green-400 hover:bg-green-300 rounded-full px-8 py-2 w-fit border border-green-900 transition-colors"
           >
             <Save size={20} />
-            {editingId ? "Update" : "Save"}
+            Save
           </button>
-
-          {editingId && (
-            <button
-              onClick={() => {
-                setEditingId(null);
-                setForm({ site: "", username: "", password: "" });
-              }}
-              className="text-red-600 hover:text-red-700 text-sm font-medium"
-            >
-              Cancel Edit
-            </button>
-          )}
 
           <div className="text-center">
             <p className="text-sm font-semibold text-gray-700">
@@ -410,12 +367,9 @@ const Manager = () => {
         </div>
 
         <div className="passwords">
-          <h2 className="font-bold text-2xl py-4">Your Passwords</h2>
-          {loading && passwordArray.length === 0 ? (
-            <div className="text-center py-8 text-gray-600">Loading passwords...</div>
-          ) : passwordArray.length === 0 ? (
-            <div className="text-center py-8 text-gray-600">No passwords saved yet</div>
-          ) : (
+          <h2 className="font-bold text-2xl py-4">Your Password</h2>
+          {passwordArray.length === 0 && <div>No password to show</div>}
+          {passwordArray.length != 0 && (
             <table className="table-auto w-full rounded-md overflow-hidden mb-10">
               <thead className="bg-green-800 text-white">
                 <tr>
@@ -426,15 +380,14 @@ const Manager = () => {
                 </tr>
               </thead>
               <tbody className="bg-green-100">
-                {passwordArray.map((item) => {
+                {passwordArray.map((item, index) => {
                   return (
-                    <tr key={item.id}>
+                    <tr key={index}>
                       <td className="p-2 border border-white text-center">
                         <div className="flex items-center justify-center gap-2">
                           <a
                             href={item.site}
                             target="_blank"
-                            rel="noopener noreferrer"
                             className="hover:underline"
                           >
                             {item.site}
@@ -443,7 +396,6 @@ const Manager = () => {
                           <button
                             onClick={() => copyText(item.site)}
                             className="cursor-pointer hover:bg-green-200 p-1 rounded transition-colors"
-                            title="Copy site"
                           >
                             <Copy size={18} className="text-green-700" />
                           </button>
@@ -456,7 +408,6 @@ const Manager = () => {
                           <button
                             onClick={() => copyText(item.username)}
                             className="cursor-pointer hover:bg-green-200 p-1 rounded transition-colors"
-                            title="Copy username"
                           >
                             <Copy size={18} className="text-green-700" />
                           </button>
@@ -477,7 +428,6 @@ const Manager = () => {
                           <button
                             onClick={() => copyText(item.password)}
                             className="cursor-pointer hover:bg-green-200 p-1 rounded transition-colors"
-                            title="Copy password"
                           >
                             <Copy size={18} className="text-green-700" />
                           </button>
@@ -488,16 +438,12 @@ const Manager = () => {
                           <button
                             onClick={() => editPassword(item.id)}
                             className="cursor-pointer hover:bg-green-200 p-1 rounded transition-colors"
-                            title="Edit password"
-                            disabled={loading}
                           >
                             <Edit2 size={18} className="text-blue-600" />
                           </button>
                           <button
                             onClick={() => deletePassword(item.id)}
                             className="cursor-pointer hover:bg-green-200 p-1 rounded transition-colors"
-                            title="Delete password"
-                            disabled={loading}
                           >
                             <Trash2 size={18} className="text-red-600" />
                           </button>
