@@ -4,26 +4,29 @@ import Manager from "./components/Manager";
 import Footer from "./components/Footer";
 import Login from "./components/Login";
 import { useState, useEffect } from "react";
-import { getToken, getUser, authAPI } from "./utils/api";
+import { getToken, getUser, authAPI, setUser } from "./utils/api";
 
 function App() {
   const [loggedIn, setLoggedIn] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is already logged in
+   
     const token = getToken();
     const user = getUser();
 
     if (token && user) {
-      // Verify token with backend
+      
       authAPI
         .verify()
-        .then(() => {
+        .then((data) => {
           setLoggedIn(true);
+          if (data?.user) {
+            setUser(data.user);
+          }
         })
         .catch(() => {
-          // Token invalid, clear auth
+          
           localStorage.removeItem("token");
           localStorage.removeItem("user");
         })

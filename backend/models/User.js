@@ -1,4 +1,3 @@
-// User model for MongoDB
 const { ObjectId } = require("mongodb");
 
 class User {
@@ -10,6 +9,8 @@ class User {
     const user = {
       email: email.toLowerCase().trim(),
       password: hashedPassword,
+      isPremium: false,
+      premiumSince: null,
       createdAt: new Date(),
     };
     const result = await this.collection.insertOne(user);
@@ -22,6 +23,20 @@ class User {
 
   async findById(userId) {
     return await this.collection.findOne({ _id: new ObjectId(userId) });
+  }
+
+  async upgradeToPremium(userId) {
+    const _id = new ObjectId(userId);
+    await this.collection.updateOne(
+      { _id },
+      {
+        $set: {
+          isPremium: true,
+          premiumSince: new Date(),
+        },
+      }
+    );
+    return await this.collection.findOne({ _id });
   }
 }
 

@@ -2,22 +2,24 @@ const express = require("express");
 const { ObjectId } = require("mongodb");
 const { authenticateToken } = require("../middleware/auth");
 const Password = require("../models/Password");
+const User = require("../models/User");
 
 const router = express.Router();
 
-// All password routes require authentication
+
 router.use(authenticateToken);
 
 const MAX_PASSWORDS = 10;
+const toObjectId = (id) => (ObjectId.isValid(id) ? new ObjectId(id) : null);
 
-// Get all passwords for the authenticated user
+
 router.get("/", async (req, res) => {
   try {
     const userId = req.user.userId;
     const passwordModel = new Password(req.db);
     const passwords = await passwordModel.getPasswordsByUserId(userId);
 
-    // Convert MongoDB ObjectId to string for frontend
+   
     const formattedPasswords = passwords.map((pwd) => ({
       id: pwd._id.toString(),
       site: pwd.site,
@@ -33,7 +35,7 @@ router.get("/", async (req, res) => {
   }
 });
 
-// Create a new password
+
 router.post("/", async (req, res) => {
   try {
     const userId = req.user.userId;
@@ -54,9 +56,16 @@ router.post("/", async (req, res) => {
     const passwordModel = new Password(req.db);
     const count = await passwordModel.countPasswordsByUserId(userId);
 
-    if (count >= MAX_PASSWORDS) {
-      return res.status(400).json({
+    const userModel = new User(req.db);
+    const user = await userModel.findById(userId);
+    const isPremium = Boolean(user?.isPremium);
+
+    if (!isPremium && count >= MAX_PASSWORDS) {
+      return res.status(402).json({
         error: `Maximum limit reached! You can only save ${MAX_PASSWORDS} passwords.`,
+        requiresPayment: true,
+        max: MAX_PASSWORDS,
+        count,
       });
     }
 
@@ -83,7 +92,7 @@ router.post("/", async (req, res) => {
   }
 });
 
-// Update a password
+
 router.put("/:id", async (req, res) => {
   try {
     const userId = req.user.userId;
@@ -104,13 +113,25 @@ router.put("/:id", async (req, res) => {
 
     const passwordModel = new Password(req.db);
 
-    const result = await passwordModel.updatePassword(
-      new ObjectId(passwordId),
+    const objectId = toObjectId(passwordId);
+    let result = await passwordModel.updatePassword(
+      objectId ?? passwordId,
       userId,
       site,
       username,
       password
     );
+
+    
+    if (result.matchedCount === 0 && objectId) {
+      result = await passwordModel.updatePassword(
+        passwordId,
+        userId,
+        site,
+        username,
+        password
+      );
+    }
 
     if (result.matchedCount === 0) {
       return res.status(404).json({ error: "Password not found" });
@@ -119,14 +140,11 @@ router.put("/:id", async (req, res) => {
     res.json({ message: "Password updated successfully" });
   } catch (error) {
     console.error("Update password error:", error);
-    if (error.message.includes("ObjectId")) {
-      return res.status(400).json({ error: "Invalid password ID" });
-    }
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// Delete a password
+
 router.delete("/:id", async (req, res) => {
   try {
     const userId = req.user.userId;
@@ -134,10 +152,13 @@ router.delete("/:id", async (req, res) => {
 
     const passwordModel = new Password(req.db);
 
-    const result = await passwordModel.deletePassword(
-      new ObjectId(passwordId),
-      userId
-    );
+    const objectId = toObjectId(passwordId);
+    let result = await passwordModel.deletePassword(objectId ?? passwordId, userId);
+
+
+    if (result.deletedCount === 0 && objectId) {
+      result = await passwordModel.deletePassword(passwordId, userId);
+    }
 
     if (result.deletedCount === 0) {
       return res.status(404).json({ error: "Password not found" });
@@ -146,21 +167,27 @@ router.delete("/:id", async (req, res) => {
     res.json({ message: "Password deleted successfully" });
   } catch (error) {
     console.error("Delete password error:", error);
-    if (error.message.includes("ObjectId")) {
-      return res.status(400).json({ error: "Invalid password ID" });
-    }
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// Get password count
+
 router.get("/count", async (req, res) => {
   try {
     const userId = req.user.userId;
     const passwordModel = new Password(req.db);
     const count = await passwordModel.countPasswordsByUserId(userId);
 
-    res.json({ count: count, max: MAX_PASSWORDS });
+    const userModel = new User(req.db);
+    const user = await userModel.findById(userId);
+    const isPremium = Boolean(user?.isPremium);
+
+    res.json({
+      count,
+      max: isPremium ? null : MAX_PASSWORDS,
+      isPremium,
+      unlimited: isPremium,
+    });
   } catch (error) {
     console.error("Get count error:", error);
     res.status(500).json({ error: "Internal server error" });

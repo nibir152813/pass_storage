@@ -40,7 +40,7 @@ const Login = ({ onLogin }) => {
         toast.success("Login successful!");
       }
 
-      // Store token and user info
+      
       setAuth(response.token, response.user);
       onLogin(true);
     } catch (error) {

@@ -18,6 +18,11 @@ const setAuth = (token, user) => {
   localStorage.setItem("user", JSON.stringify(user));
 };
 
+// Update user in localStorage (keeps token)
+const setUser = (user) => {
+  localStorage.setItem("user", JSON.stringify(user));
+};
+
 // Clear auth data
 const clearAuth = () => {
   localStorage.removeItem("token");
@@ -85,6 +90,13 @@ export const authAPI = {
     });
     return data;
   },
+
+  upgrade: async () => {
+    const data = await apiRequest("/auth/upgrade", {
+      method: "POST",
+    });
+    return data;
+  },
 };
 
 // Password API
@@ -123,4 +135,4 @@ export const passwordAPI = {
   },
 };
 
-export { getToken, getUser, setAuth, clearAuth };
+export { getToken, getUser, setAuth, setUser, clearAuth };

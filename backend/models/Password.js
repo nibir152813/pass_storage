@@ -1,4 +1,3 @@
-// Password model for MongoDB
 class Password {
   constructor(db) {
     this.collection = db.collection("passwords");

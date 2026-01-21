@@ -2,7 +2,8 @@ import { useRef, useState, useEffect } from "react";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { Eye, EyeOff, Copy, Save, Edit2, Trash2, X } from "lucide-react";
-import { passwordAPI, getUser, authAPI } from "../utils/api";
+import { passwordAPI, getUser, authAPI, setUser } from "../utils/api";
+import bkashNagad from "../assets/bkash_nagad.png";
 
 const maskPassword = (password) => {
   return "•".repeat(password.length);
@@ -20,13 +21,28 @@ const Manager = () => {
   const [showFormPassword, setShowFormPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [currentUser, setCurrentUser] = useState(getUser());
+  const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
+  const [upgradeLoading, setUpgradeLoading] = useState(false);
 
-  const user = getUser();
+  const isPremium = Boolean(currentUser?.isPremium);
 
-  // Fetch passwords from backend on component mount
   useEffect(() => {
+    syncUser();
     fetchPasswords();
   }, []);
+
+  const syncUser = async () => {
+    try {
+      const response = await authAPI.verify();
+      if (response?.user) {
+        setUser(response.user);
+        setCurrentUser(response.user);
+      }
+    } catch {
+      // ignore - App will handle logout if needed
+    }
+  };
 
   const fetchPasswords = async () => {
     try {
@@ -107,7 +123,11 @@ const Manager = () => {
       return;
     }
 
-    if (form.site.length <= 3 || form.username.length <= 3 || form.password.length <= 3) {
+    if (
+      form.site.length <= 3 ||
+      form.username.length <= 3 ||
+      form.password.length <= 3
+    ) {
       toast.error("All fields must be more than 3 characters!");
       return;
     }
@@ -116,8 +136,12 @@ const Manager = () => {
       setLoading(true);
 
       if (editingId) {
-        // Update existing password
-        await passwordAPI.update(editingId, form.site, form.username, form.password);
+        await passwordAPI.update(
+          editingId,
+          form.site,
+          form.username,
+          form.password,
+        );
         toast.success("Password updated successfully!", {
           position: "top-right",
           autoClose: 5000,
@@ -125,7 +149,10 @@ const Manager = () => {
         });
         setEditingId(null);
       } else {
-        // Create new password
+        if (!isPremium && passwordArray.length >= MAX_PASSWORDS) {
+          setShowUpgradeDialog(true);
+          return;
+        }
         await passwordAPI.create(form.site, form.username, form.password);
         toast.success("Password saved successfully!", {
           position: "top-right",
@@ -137,9 +164,41 @@ const Manager = () => {
       setForm({ site: "", username: "", password: "" });
       await fetchPasswords();
     } catch (error) {
+      if (
+        !isPremium &&
+        typeof error?.message === "string" &&
+        error.message.toLowerCase().includes("maximum limit reached")
+      ) {
+        setShowUpgradeDialog(true);
+      }
       toast.error(error.message || "Failed to save password!");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleUpgrade = async () => {
+    try {
+      setUpgradeLoading(true);
+      const response = await authAPI.upgrade();
+      if (response?.user) {
+        setUser(response.user);
+        setCurrentUser(response.user);
+      }
+      toast.success(response?.message || "Premium unlocked!", {
+        position: "top-right",
+        autoClose: 3000,
+        theme: "dark",
+      });
+      setShowUpgradeDialog(false);
+    } catch (error) {
+      toast.error(error.message || "Payment failed!", {
+        position: "top-right",
+        autoClose: 3000,
+        theme: "dark",
+      });
+    } finally {
+      setUpgradeLoading(false);
     }
   };
 
@@ -173,7 +232,7 @@ const Manager = () => {
         password: passwordToEdit.password,
       });
       setEditingId(id);
-      // Scroll to form
+
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
@@ -194,6 +253,45 @@ const Manager = () => {
         pauseOnHover
         theme="dark"
       />
+
+      {showUpgradeDialog && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 w-[90%] max-w-md transform transition-all animate-fadeIn">
+            <div className="flex justify-end mb-4">
+              <button
+                onClick={() => setShowUpgradeDialog(false)}
+                className="text-gray-500 hover:text-gray-700 transition-colors"
+                disabled={upgradeLoading}
+                title="Close"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <img
+              src={bkashNagad}
+              alt="Payment"
+              className="w-full max-w-[280px] mx-auto mb-6"
+            />
+
+            <h2 className="text-2xl font-bold text-gray-800 text-center mb-2">
+              Free limit reached
+            </h2>
+            <p className="text-gray-600 text-center mb-6">
+              আপনি ফ্রি হিসেবে সর্বোচ্চ {MAX_PASSWORDS}টি password save করতে
+              পারবেন। Unlimited password add করতে <b>Continue Payment</b> করুন।
+            </p>
+
+            <button
+              onClick={handleUpgrade}
+              disabled={upgradeLoading}
+              className="w-full bg-green-600 hover:bg-green-500 disabled:bg-green-300 disabled:cursor-not-allowed text-white py-3 rounded-full font-bold transition-colors"
+            >
+              {upgradeLoading ? "Processing..." : "Continue Payment"}
+            </button>
+          </div>
+        </div>
+      )}
 
       {showDialog && (
         <div className="fixed inset-0 flex items-center justify-center z-50 backdrop-blur-sm">
@@ -244,7 +342,6 @@ const Manager = () => {
             ) : (
               <>
                 <div className="space-y-4">
-                  {/* Site */}
                   <div className="bg-green-50 p-4 rounded-lg">
                     <label className="text-sm font-semibold text-gray-600 block mb-2">
                       Site
@@ -267,7 +364,6 @@ const Manager = () => {
                     </div>
                   </div>
 
-                  {/* Username */}
                   <div className="bg-green-50 p-4 rounded-lg">
                     <label className="text-sm font-semibold text-gray-600 block mb-2">
                       Username
@@ -285,7 +381,6 @@ const Manager = () => {
                     </div>
                   </div>
 
-                  {/* Password */}
                   <div className="bg-green-50 p-4 rounded-lg">
                     <label className="text-sm font-semibold text-gray-600 block mb-2">
                       Password
@@ -399,11 +494,13 @@ const Manager = () => {
             <p className="text-sm font-semibold text-gray-700">
               Saved Passwords:{" "}
               <span className="text-green-600">{passwordArray.length}</span> /{" "}
-              <span className="text-gray-500">{MAX_PASSWORDS}</span>
+              <span className="text-gray-500">
+                {isPremium ? "Unlimited" : MAX_PASSWORDS}
+              </span>
             </p>
-            {passwordArray.length >= MAX_PASSWORDS && (
+            {!isPremium && passwordArray.length >= MAX_PASSWORDS && (
               <p className="text-xs text-red-600 mt-1">
-                ⚠️ Maximum limit reached! Delete a password to save new ones.
+                Maximum limit reached! Continue payment to add unlimited.
               </p>
             )}
           </div>
@@ -412,9 +509,13 @@ const Manager = () => {
         <div className="passwords">
           <h2 className="font-bold text-2xl py-4">Your Passwords</h2>
           {loading && passwordArray.length === 0 ? (
-            <div className="text-center py-8 text-gray-600">Loading passwords...</div>
+            <div className="text-center py-8 text-gray-600">
+              Loading passwords...
+            </div>
           ) : passwordArray.length === 0 ? (
-            <div className="text-center py-8 text-gray-600">No passwords saved yet</div>
+            <div className="text-center py-8 text-gray-600">
+              No passwords saved yet
+            </div>
           ) : (
             <table className="table-auto w-full rounded-md overflow-hidden mb-10">
               <thead className="bg-green-800 text-white">
