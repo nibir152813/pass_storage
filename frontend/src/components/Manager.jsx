@@ -574,14 +574,6 @@ const Manager = () => {
                           >
                             <Eye size={18} className="text-green-700" />
                           </button>
-
-                          <button
-                            onClick={() => copyText(item.password)}
-                            className="cursor-pointer hover:bg-green-200 p-1 rounded transition-colors"
-                            title="Copy password"
-                          >
-                            <Copy size={18} className="text-green-700" />
-                          </button>
                         </div>
                       </td>
                       <td className="justify-center p-2 border border-white text-center">
