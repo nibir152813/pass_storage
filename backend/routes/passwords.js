@@ -1,4 +1,4 @@
-~const express = require("express");
+const express = require("express");
 const { ObjectId } = require("mongodb");
 const { authenticateToken } = require("../middleware/auth");
 const Password = require("../models/Password");
@@ -6,12 +6,10 @@ const User = require("../models/User");
 
 const router = express.Router();
 
-
 router.use(authenticateToken);
 
 const MAX_PASSWORDS = 10;
 const toObjectId = (id) => (ObjectId.isValid(id) ? new ObjectId(id) : null);
-
 
 router.get("/", async (req, res) => {
   try {
@@ -19,7 +17,6 @@ router.get("/", async (req, res) => {
     const passwordModel = new Password(req.db);
     const passwords = await passwordModel.getPasswordsByUserId(userId);
 
-   
     const formattedPasswords = passwords.map((pwd) => ({
       id: pwd._id.toString(),
       site: pwd.site,
@@ -34,7 +31,6 @@ router.get("/", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
-
 
 router.post("/", async (req, res) => {
   try {
@@ -73,7 +69,7 @@ router.post("/", async (req, res) => {
       userId,
       site,
       username,
-      password
+      password,
     );
 
     res.status(201).json({
@@ -91,7 +87,6 @@ router.post("/", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
-
 
 router.put("/:id", async (req, res) => {
   try {
@@ -119,17 +114,16 @@ router.put("/:id", async (req, res) => {
       userId,
       site,
       username,
-      password
+      password,
     );
 
-    
     if (result.matchedCount === 0 && objectId) {
       result = await passwordModel.updatePassword(
         passwordId,
         userId,
         site,
         username,
-        password
+        password,
       );
     }
 
@@ -144,7 +138,6 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-
 router.delete("/:id", async (req, res) => {
   try {
     const userId = req.user.userId;
@@ -153,8 +146,10 @@ router.delete("/:id", async (req, res) => {
     const passwordModel = new Password(req.db);
 
     const objectId = toObjectId(passwordId);
-    let result = await passwordModel.deletePassword(objectId ?? passwordId, userId);
-
+    let result = await passwordModel.deletePassword(
+      objectId ?? passwordId,
+      userId,
+    );
 
     if (result.deletedCount === 0 && objectId) {
       result = await passwordModel.deletePassword(passwordId, userId);
@@ -170,7 +165,6 @@ router.delete("/:id", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
-
 
 router.get("/count", async (req, res) => {
   try {
@@ -193,3 +187,6 @@ router.get("/count", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
+// ✅ THIS WAS MISSING — the root cause of the error
+module.exports = router;
